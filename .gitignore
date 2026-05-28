@@ -1,0 +1,22 @@
+# Visual Studio
+.vs/
+.vscode/
+*.sln
+*.slnx
+*.vcxproj*
+*.user
+
+# Build
+x64/
+Debug/
+Release/
+*.exe
+*.obj
+*.pdb
+
+# 하위 폴더까지 전부 차단
+**/Debug/
+**/x64/
+
+# 기타
+*.log
