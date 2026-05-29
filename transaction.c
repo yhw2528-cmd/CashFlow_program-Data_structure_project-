@@ -152,24 +152,42 @@ void modify_node(int id) {
     printf("수정이 완료되었습니다.\n");
 }
 
+static int cmp_by_date(const void* a, const void* b) {
+    const Transaction* ta = *(const Transaction**)a;
+    const Transaction* tb = *(const Transaction**)b;
+    int cmp = strcmp(ta->date, tb->date);
+    return (cmp != 0) ? cmp : (ta->id - tb->id);
+}
+
 void print_all(void) {
     if (head == NULL) {
         printf("거래 내역이 없습니다.\n");
         return;
     }
 
+    int count = 0;
+    for (Transaction* t = head; t != NULL; t = t->next) count++;
+
+    Transaction** arr = (Transaction**)malloc(count * sizeof(Transaction*));
+    if (arr == NULL) { printf("메모리 할당 실패\n"); return; }
+
+    int i = 0;
+    for (Transaction* t = head; t != NULL; t = t->next) arr[i++] = t;
+    qsort(arr, count, sizeof(Transaction*), cmp_by_date);
+
     printf("+------+------------+----------------+----------+----------------------+\n");
     printf("| NO   |    날짜    |      금액      | 카테고리 |         메모         |\n");
     printf("+------+------------+----------------+----------+----------------------+\n");
 
-    for (Transaction* t = head; t != NULL; t = t->next) {
+    for (i = 0; i < count; i++) {
         char amt[20];
-        format_amount(amt, sizeof(amt), t->amount);
+        format_amount(amt, sizeof(amt), arr[i]->amount);
         printf("| %4d | %-10s | %14s | %-8s | %-20s |\n",
-               t->id, t->date, amt, t->category, t->memo);
+               arr[i]->id, arr[i]->date, amt, arr[i]->category, arr[i]->memo);
     }
 
     printf("+------+------------+----------------+----------+----------------------+\n");
+    free(arr);
 }
 
 Transaction* find_node(int id) {
