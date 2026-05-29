@@ -5,8 +5,11 @@
 #include "stack.h"
 #include "stats.h"
 #include "file_io.h"
+#include "budget_bst.h"
+#include "month_queue.h"
 
-UndoStack undo_stk;
+UndoStack   undo_stk;
+BudgetNode* budget_root = NULL;
 
 static void add_transaction(void) {
     char date[12];
@@ -60,24 +63,35 @@ static void add_transaction(void) {
     }
     insert_node(node);
     printf("거래가 추가되었습니다. (ID: %d)\n", node->id);
+
+    /* 지출 거래인 경우 예산 초과 여부 자동 확인 */
+    if (node->amount < 0) {
+        int y, m;
+        sscanf(node->date, "%d-%d", &y, &m);
+        check_budget(budget_root, node->category, y, m);
+    }
 }
 
 int main(void) {
     init_list();
     init_stack(&undo_stk);
     load_from_file("data.txt");
+    load_budget(&budget_root, "budget.txt");
 
     int choice;
     while (1) {
         printf("\n============ 가계부 관리 시스템 ============\n");
-        printf("  1. 거래 추가\n");
-        printf("  2. 거래 삭제\n");
-        printf("  3. 거래 수정\n");
-        printf("  4. 전체 내역 출력\n");
-        printf("  5. 카테고리별 통계\n");
-        printf("  6. 월별 요약\n");
-        printf("  7. 거래 삭제 취소 (undo)\n");
-        printf("  0. 저장 후 종료\n");
+        printf("   1. 거래 추가\n");
+        printf("   2. 거래 삭제\n");
+        printf("   3. 거래 수정\n");
+        printf("   4. 전체 내역 출력\n");
+        printf("   5. 카테고리별 통계\n");
+        printf("   6. 월별 요약\n");
+        printf("   7. 거래 삭제 취소 (undo)\n");
+        printf("   8. 예산 설정\n");
+        printf("   9. 예산 현황 조회\n");
+        printf("  10. 지출 추이 그래프\n");
+        printf("   0. 저장 후 종료\n");
         printf("==========================================\n");
         printf("선택: ");
 
@@ -145,15 +159,37 @@ int main(void) {
                 break;
             }
 
+            case 8:
+                set_budget(&budget_root);
+                break;
+
+            case 9: {
+                int year, month;
+                printf("조회할 연도 입력: "); scanf("%d", &year);
+                printf("조회할 월 입력: ");   scanf("%d", &month);
+                getchar();
+                print_budget_status(budget_root, year, month);
+                break;
+            }
+
+            case 10: {
+                MonthQueue q;
+                init_queue(&q);
+                build_month_queue(&q);
+                print_trend_graph(&q);
+                break;
+            }
+
             case 0: {
                 save_to_file("data.txt");
+                save_budget(budget_root, "budget.txt");
                 printf("저장 완료. 프로그램을 종료합니다.\n");
 
-                /* undo 스택에 남은 노드 메모리 해제 */
                 while (!is_empty(&undo_stk))
                     free(pop_undo(&undo_stk));
 
-                /* 연결 리스트 전체 메모리 해제 */
+                bst_free(budget_root);
+
                 Transaction* cur = head;
                 while (cur != NULL) {
                     Transaction* nxt = cur->next;
